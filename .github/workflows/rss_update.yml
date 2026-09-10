@@ -10,6 +10,7 @@ on:
 # 🆕 権限設定（重要！）
 permissions:
   contents: write  # リポジトリの内容を書き込む権限
+  actions: write   # keepalive アクションが GitHub API を利用するために必要
 
 jobs:
   update-rss:
@@ -50,6 +51,16 @@ jobs:
         git add rss.xml
         # 変更がある場合のみコミット
         git diff --staged --quiet || git commit -m "🔄 RSSフィードを自動更新 ($(date '+%Y-%m-%d %H:%M'))"
+        # プッシュ前にリモートの変更を取り込む（競合回避）
+        git pull --rebase origin ${{ github.ref_name }}
         git push
       # 🆕 エラーが発生してもワークフローを失敗させない（オプション）
       continue-on-error: false
+    
+    # 60日間の無効化対策（keepalive）
+    - name: Keepalive（ワークフロー無効化防止）
+      if: always()
+      uses: entepotenz/keep-github-actions-alive-min-dependencies@v1
+      with:
+        COMMIT_MESSAGE: "Keepalive: ワークフロー無効化防止"
+        TIME_ELAPSED_THRESHOLD_IN_DAYS: 50
