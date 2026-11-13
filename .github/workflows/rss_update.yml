@@ -15,7 +15,7 @@ permissions:
 jobs:
   update-rss:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: リポジトリをチェックアウト
       uses: actions/checkout@v4
@@ -24,26 +24,31 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         # 全履歴を取得（必要に応じて）
         fetch-depth: 0
-    
+
     - name: Pythonをセットアップ
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-    
+
     - name: 依存パッケージをインストール
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-    
-    - name: Chromeをインストール
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y chromium-browser
-    
+
+    # 🆕 snap ではなく browser-actions で Chrome をセットアップ
+    - name: Chromeをセットアップ
+      id: setup-chrome
+      uses: browser-actions/setup-chrome@v1
+      with:
+        chrome-version: stable
+
     - name: スクリプトを実行
+      env:
+        # 🆕 Selenium が使う Chrome のパスを環境変数で渡す
+        CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
       run: |
         python generate_rss.py
-    
+
     - name: 変更をコミットしてプッシュ
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
@@ -56,7 +61,7 @@ jobs:
         git push
       # 🆕 エラーが発生してもワークフローを失敗させない（オプション）
       continue-on-error: false
-    
+
     # 60日間の無効化対策（keepalive）
     - name: Keepalive（ワークフロー無効化防止）
       if: always()
